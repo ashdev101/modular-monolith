@@ -5,9 +5,5 @@
 // Never modify this file — if the shape changes, customers-team
 // publishes v2 and we update our handler to handle both versions.
 
-export interface CustomerRegisteredV1 {
-  customerId: string;
-  name:       string;
-  email:      string;
-  isVip:      boolean;
-}
+export { CustomerRegistered, CustomerRegisteredSchema }
+  from '../../../../core/events/payloads/customers';
