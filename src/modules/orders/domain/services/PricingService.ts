@@ -43,9 +43,11 @@ export class PricingService {
     // Step 2: apply promo code discount (if any)
     const promoFraction = promoDiscountPct / 100;
 
-    // Step 3: VIP stacks on top of promo — senior architect decision:
-    //   VIP bonus applies to the ALREADY-DISCOUNTED price, not the base.
-    //   This prevents double-dipping exploitation.
+    // Step 3: VIP bonus stacks on top of a promo code — intentional business rule.
+    //   VIP discount only activates when a promo code is also present.
+    //   VIP-only orders (no promo code) pay full price — VIP status is a loyalty
+    //   reward that amplifies promo savings, not a standalone discount.
+    //   VIP bonus applies to the ALREADY-DISCOUNTED price to prevent exploitation.
     const vipFraction = isVip && promoDiscountPct > 0
       ? PricingService.VIP_BONUS_PCT / 100
       : 0;

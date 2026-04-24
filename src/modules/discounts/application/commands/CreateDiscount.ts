@@ -1,4 +1,5 @@
 import type { ICreateDiscountUseCase, CreateDiscountCommand, CreateDiscountResult } from '../ports/commands/ICreateDiscountUseCase';
+import { ConflictError } from '../../../../core/errors';
 import { DiscountCode } from '../../domain/DiscountCode';
 import type { DiscountRepository } from '../../infrastructure/persistence/DiscountRepository';
 
@@ -8,7 +9,7 @@ export class CreateDiscountHandler implements ICreateDiscountUseCase {
   async execute(cmd: CreateDiscountCommand): Promise<CreateDiscountResult> {
     const existing = await this.repo.findByCode(cmd.code);
     if (existing) {
-      throw Object.assign(new Error(`Code '${cmd.code}' already exists`), { code: 'CONFLICT' });
+      throw new ConflictError(`Discount code '${cmd.code}' already exists`);
     }
 
     const discount = DiscountCode.create({

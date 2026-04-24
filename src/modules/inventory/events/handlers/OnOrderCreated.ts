@@ -9,6 +9,7 @@ import { publishEvent } from '../../../../core/events/catalog';
 import type { OrderCreated, OrderCreatedV1 } from '../consumed/OrderCreated.v2';
 import { upcastOrderCreatedV1toV2 as upcastV1toV2 } from '../consumed/OrderCreated.v2';
 import type { StockRepository } from '../../infrastructure/persistence/StockRepository';
+import { Stock } from '../../domain/Stock';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // OnOrderCreated — inventory reacts to orders.order.created.
@@ -85,7 +86,7 @@ export class OnOrderCreated implements IEventHandler<OrderCreatedV1 | OrderCreat
           productId:         payload.productId,
           productName:       stock.productName,
           remainingQuantity: stock.quantity,
-          threshold:         stock.quantity < 5 ? 5 : 10,
+          threshold:         Stock.LOW_STOCK_THRESHOLD,
         },
       });
     }

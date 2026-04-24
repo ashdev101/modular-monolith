@@ -19,48 +19,50 @@ import { GetOrdersByCustomerHandler } from './application/queries/GetOrdersByCus
 // Cross-module dependencies are narrow role interfaces, not fat service contracts.
 // Each parameter documents exactly what orders needs from that module:
 //
-//   ICustomerReader         — fetch customer data (getCustomer only)
-//   IStockReader            — fetch product data  (getStock only)
-//   IStockAvailabilityChecker — gate on stock     (checkAvailability only)
-//   IDiscountApplier        — apply discount      (validateAndApply only)
+//   ICustomerReader           — fetch customer data (getCustomer only)
+//   IStockReader              — fetch product data  (getStock only)
+//   IStockAvailabilityChecker — gate on stock       (checkAvailability only)
+//   IDiscountApplier          — apply discount      (validateAndApply only)
 //
 // Phase 3 swap: pass HttpCustomerReader, HttpStockReader, etc.
 // Each HTTP adapter implements one interface — one method — minimal surface.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class OrdersModule {
-  constructor(
-    private readonly pool:            DatabasePool,
-    private readonly eventBus:        IEventBus,
-    private readonly customerReader:  ICustomerReader,
-    private readonly stockReader:     IStockReader,
-    private readonly stockChecker:    IStockAvailabilityChecker,
-    private readonly discountApplier: IDiscountApplier,
-  ) {}
+  private readonly controller: OrdersController;
 
-  register(app: Application): void {
-    const orderRepo      = new OrderRepository(this.pool);
+  constructor(
+    pool:                       DatabasePool,
+    eventBus:                   IEventBus,
+    customerReader:             ICustomerReader,
+    stockReader:                IStockReader,
+    stockChecker:               IStockAvailabilityChecker,
+    discountApplier:            IDiscountApplier,
+  ) {
+    const orderRepo      = new OrderRepository(pool);
     const pricingService = new PricingService();
 
     const createOrder = new CreateOrderHandler(
       orderRepo,
-      this.customerReader,
-      this.stockReader,
-      this.stockChecker,
-      this.discountApplier,
+      customerReader,
+      stockReader,
+      stockChecker,
+      discountApplier,
       pricingService,
-      this.eventBus,
+      eventBus,
     );
-    const cancelOrder         = new CancelOrderHandler(orderRepo, this.eventBus);
-    const getOrderDetail      = new GetOrderDetailHandler(this.pool);
-    const getOrdersByCustomer = new GetOrdersByCustomerHandler(this.pool);
+    const cancelOrder         = new CancelOrderHandler(orderRepo, eventBus);
+    const getOrderDetail      = new GetOrderDetailHandler(pool);
+    const getOrdersByCustomer = new GetOrdersByCustomerHandler(pool);
 
-    const controller = new OrdersController(createOrder, cancelOrder, getOrderDetail, getOrdersByCustomer);
+    this.controller = new OrdersController(createOrder, cancelOrder, getOrderDetail, getOrdersByCustomer);
+  }
 
-    app.post('/orders',       controller.createOrder.bind(controller));
-    app.delete('/orders/:id', controller.cancelOrder.bind(controller));
-    app.get('/orders/:id',    controller.getOrderDetail.bind(controller));
-    app.get('/orders',        controller.getOrdersByCustomer.bind(controller));
+  register(app: Application): void {
+    app.post('/orders',       this.controller.createOrder.bind(this.controller));
+    app.delete('/orders/:id', this.controller.cancelOrder.bind(this.controller));
+    app.get('/orders/:id',    this.controller.getOrderDetail.bind(this.controller));
+    app.get('/orders',        this.controller.getOrdersByCustomer.bind(this.controller));
 
     console.log('[OrdersModule] ✅ Routes registered');
   }

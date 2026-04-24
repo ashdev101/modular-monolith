@@ -13,6 +13,7 @@
     "@azure/service-bus": "^7.9.5",
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
     "pg": "^8.20.0",
     "slonik": "^44.0.0",
     "uuid": "^9.0.0",

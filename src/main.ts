@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import 'express-async-errors';
 import express from 'express';
 import { env } from './core/config/env';
 import { createAppPool } from './core/database/pool';
@@ -8,6 +9,8 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { DiscountsModule } from './modules/discounts/discounts.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { requestContextMiddleware } from './core/http/requestContext';
+import { errorMiddleware } from './core/http/errorMiddleware';
 
 async function bootstrap() {
   // ── Shared infrastructure ─────────────────────────────────────────────────
@@ -56,6 +59,7 @@ async function bootstrap() {
 
   // ── Express app ───────────────────────────────────────────────────────────
   const app = express();
+  app.use(requestContextMiddleware);
   app.use(express.json());
 
   app.get('/health', (_req, res) =>
@@ -66,6 +70,10 @@ async function bootstrap() {
   discountsModule.register(app);
   inventoryModule.register(app);
   ordersModule.register(app);
+
+  // Must be registered AFTER all routes — Express identifies error middleware
+  // by its 4-argument signature (err, req, res, next).
+  app.use(errorMiddleware);
 
   // ── Graceful shutdown ─────────────────────────────────────────────────────
   // On SIGTERM (Kubernetes pod eviction, docker stop, etc.) we:
@@ -87,6 +95,16 @@ async function bootstrap() {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT',  () => shutdown('SIGINT'));   // Ctrl+C in dev
+
+  // Last-resort safety nets — these should never fire in normal operation.
+  // If they do, it means an async error escaped asyncHandler (event handler, timer, etc.)
+  process.on('unhandledRejection', (reason) => {
+    console.error('[main] Unhandled promise rejection:', reason);
+  });
+  process.on('uncaughtException', (err) => {
+    console.error('[main] Uncaught exception — shutting down:', err);
+    process.exit(1);
+  });
 
   // ── Start HTTP server ─────────────────────────────────────────────────────
   app.listen(env.PORT, () => {

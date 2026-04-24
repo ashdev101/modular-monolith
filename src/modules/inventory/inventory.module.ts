@@ -23,7 +23,7 @@ export class InventoryModule {
   private readonly repo:       StockRepository;
   private readonly controller: InventoryController;
 
-  constructor(pool: DatabasePool, private readonly eventBus: IEventBus) {
+  constructor(pool: DatabasePool, eventBus: IEventBus) {
     this.repo = new StockRepository(pool);
 
     const acl          = new LocalInventoryService(this.repo);
@@ -35,15 +35,18 @@ export class InventoryModule {
     const listProducts = new ListProductsHandler(this.repo);
 
     this.controller = new InventoryController(addProduct, getStock, listProducts);
+
+    // Event subscriptions wired at construction time — not in register() —
+    // so handlers are active as soon as the module exists, regardless of
+    // whether HTTP routes have been registered yet.
+    eventBus.subscribe(Events.orders.CREATED,   new OnOrderCreated(this.repo, eventBus));
+    eventBus.subscribe(Events.orders.CANCELLED, new OnOrderCancelled(this.repo, eventBus));
   }
 
   register(app: Application): void {
     app.post('/inventory',    this.controller.addProduct.bind(this.controller));
     app.get('/inventory',     this.controller.listProducts.bind(this.controller));
     app.get('/inventory/:id', this.controller.getStock.bind(this.controller));
-
-    this.eventBus.subscribe(Events.orders.CREATED,   new OnOrderCreated(this.repo, this.eventBus));
-    this.eventBus.subscribe(Events.orders.CANCELLED, new OnOrderCancelled(this.repo, this.eventBus));
 
     console.log('[InventoryModule] ✅ Routes + event subscriptions registered');
   }

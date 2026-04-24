@@ -2,6 +2,7 @@ import type { IRegisterCustomerUseCase, RegisterCustomerCommand, RegisterCustome
 import type { IEventBus } from '../../../../core/bus/EventBus';
 import { Events } from '../../../../core/events/registry';
 import { publishEvent } from '../../../../core/events/catalog';
+import { ConflictError } from '../../../../core/errors';
 import { Customer } from '../../domain/Customer';
 import type { CustomerRepository } from '../../infrastructure/persistence/CustomerRepository';
 
@@ -14,7 +15,7 @@ export class RegisterCustomerHandler implements IRegisterCustomerUseCase {
   async execute(cmd: RegisterCustomerCommand): Promise<RegisterCustomerResult> {
     const existing = await this.repo.findByEmail(cmd.email);
     if (existing) {
-      throw Object.assign(new Error(`Email '${cmd.email}' is already registered`), { code: 'CONFLICT' });
+      throw new ConflictError(`Email '${cmd.email}' is already registered`);
     }
 
     const customer = Customer.register(cmd.name, cmd.email);

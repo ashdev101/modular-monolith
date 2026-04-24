@@ -1,14 +1,25 @@
-import { sql } from 'slonik';
+import { sql, type FragmentSqlToken } from 'slonik';
+import { type ZodType } from 'zod';
 import type { DatabasePool } from '../../../../core/database/pool';
-import { NotFoundError } from '../../../../core/errors';
+import { BaseRepository } from '../../../../core/repository/BaseRepository';
 import { Stock } from '../../domain/Stock';
-import { StockRowSchema } from '../../domain/stock.schema';
+import { StockRowSchema, type StockRow } from '../../domain/stock.schema';
 
 const SELECT_COLS = sql.fragment`id, product_name, unit_price, quantity, created_at`;
-const now = () => new Date().toISOString();
 
-export class StockRepository {
-  constructor(private readonly pool: DatabasePool) {}
+export class StockRepository extends BaseRepository<StockRow, Stock> {
+  protected readonly schema: ZodType<StockRow> = StockRowSchema;
+  protected readonly table = 'inventory.products';
+  protected readonly entityName = 'Product';
+  protected readonly selectCols: FragmentSqlToken = SELECT_COLS;
+
+  constructor(pool: DatabasePool) {
+    super(pool);
+  }
+
+  protected toDomain(row: StockRow): Stock {
+    return Stock.reconstitute(row);
+  }
 
   async save(stock: Stock): Promise<void> {
     await this.pool.query(sql.unsafe`
@@ -19,7 +30,7 @@ export class StockRepository {
         ${stock.unitPrice},
         ${stock.quantity},
         ${stock.createdAt.toISOString()},
-        ${now()}
+        ${this.now()}
       )
     `);
   }
@@ -27,28 +38,8 @@ export class StockRepository {
   async update(stock: Stock): Promise<void> {
     await this.pool.query(sql.unsafe`
       UPDATE inventory.products
-      SET quantity = ${stock.quantity}, updated_at = ${now()}
+      SET quantity = ${stock.quantity}, updated_at = ${this.now()}
       WHERE id = ${stock.id}
     `);
-  }
-
-  async findById(id: string): Promise<Stock | null> {
-    const row = await this.pool.maybeOne(sql.type(StockRowSchema)`
-      SELECT ${SELECT_COLS} FROM inventory.products WHERE id = ${id}
-    `);
-    return row ? Stock.reconstitute(row) : null;
-  }
-
-  async findByIdOrThrow(id: string): Promise<Stock> {
-    const stock = await this.findById(id);
-    if (!stock) throw new NotFoundError('Product', id);
-    return stock;
-  }
-
-  async findAll(): Promise<Stock[]> {
-    const rows = await this.pool.any(sql.type(StockRowSchema)`
-      SELECT ${SELECT_COLS} FROM inventory.products ORDER BY product_name
-    `);
-    return rows.map(row => Stock.reconstitute(row));
   }
 }

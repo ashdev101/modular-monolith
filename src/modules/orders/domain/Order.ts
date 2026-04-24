@@ -36,6 +36,7 @@ export class Order {
   // ── Factory ───────────────────────────────────────────────────────────────
 
   static create(params: {
+    id?:          string;
     customerId:   string;
     items:        OrderItem[];
     total:        Money;
@@ -53,7 +54,7 @@ export class Order {
     }
 
     return new Order(
-      uuidv4(),
+      params.id ?? uuidv4(),
       params.customerId,
       params.items,
       params.total,

@@ -133,7 +133,7 @@ export const EventCatalog: Record<EventName, CatalogEntry> = {
     schema:        CustomerRegisteredSchema,
     schemaVersion: 1,
     description:   'Fired when a new customer account is created',
-    publishedBy:   'customers → CustomersController.registerCustomer()',
+    publishedBy:   'customers → RegisterCustomerHandler',
     subscribedBy:  [],
   },
 
@@ -141,7 +141,7 @@ export const EventCatalog: Record<EventName, CatalogEntry> = {
     schema:        CustomerVipGrantedSchema,
     schemaVersion: 1,
     description:   'Fired when a customer is promoted to VIP status',
-    publishedBy:   'customers → CustomersController.grantVip()',
+    publishedBy:   'customers → GrantVipHandler',
     subscribedBy:  [],
   },
 

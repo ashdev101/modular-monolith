@@ -1,15 +1,25 @@
-import { sql } from 'slonik';
-import { z } from 'zod';
+import { sql, type FragmentSqlToken } from 'slonik';
+import { type ZodType } from 'zod';
 import type { DatabasePool } from '../../../../core/database/pool';
-import { NotFoundError } from '../../../../core/errors';
+import { BaseRepository } from '../../../../core/repository/BaseRepository';
 import { Customer } from '../../domain/Customer';
-import { CustomerRowSchema } from '../../domain/customer.schema';
+import { CustomerRowSchema, type CustomerRow } from '../../domain/customer.schema';
 
 const SELECT_COLS = sql.fragment`id, name, email, is_vip, vip_granted_at, created_at`;
-const now = () => new Date().toISOString();
 
-export class CustomerRepository {
-  constructor(private readonly pool: DatabasePool) {}
+export class CustomerRepository extends BaseRepository<CustomerRow, Customer> {
+  protected readonly schema: ZodType<CustomerRow> = CustomerRowSchema;
+  protected readonly table = 'customers.customers';
+  protected readonly entityName = 'Customer';
+  protected readonly selectCols: FragmentSqlToken = SELECT_COLS;
+
+  constructor(pool: DatabasePool) {
+    super(pool);
+  }
+
+  protected toDomain(row: CustomerRow): Customer {
+    return Customer.reconstitute(row);
+  }
 
   async save(customer: Customer): Promise<void> {
     await this.pool.query(sql.unsafe`
@@ -22,7 +32,7 @@ export class CustomerRepository {
         ${customer.isVip},
         ${customer.vipGrantedAt?.toISOString() ?? null},
         ${customer.createdAt.toISOString()},
-        ${now()}
+        ${this.now()}
       )
     `);
   }
@@ -32,42 +42,13 @@ export class CustomerRepository {
       UPDATE customers.customers
       SET is_vip         = ${customer.isVip},
           vip_granted_at = ${customer.vipGrantedAt?.toISOString() ?? null},
-          updated_at     = ${now()}
+          updated_at     = ${this.now()}
       WHERE id = ${customer.id}
     `);
   }
 
-  async findById(id: string): Promise<Customer | null> {
-    const row = await this.pool.maybeOne(sql.type(CustomerRowSchema)`
-      SELECT ${SELECT_COLS} FROM customers.customers WHERE id = ${id}
-    `);
-    return row ? Customer.reconstitute(row) : null;
-  }
-
-  async findByIdOrThrow(id: string): Promise<Customer> {
-    const customer = await this.findById(id);
-    if (!customer) throw new NotFoundError('Customer', id);
-    return customer;
-  }
-
   async findByEmail(email: string): Promise<Customer | null> {
-    const row = await this.pool.maybeOne(sql.type(CustomerRowSchema)`
-      SELECT ${SELECT_COLS} FROM customers.customers WHERE email = ${email.toLowerCase()}
-    `);
-    return row ? Customer.reconstitute(row) : null;
-  }
-
-  async existsById(id: string): Promise<boolean> {
-    const row = await this.pool.one(sql.type(z.object({ exists: z.boolean() }))`
-      SELECT EXISTS(SELECT 1 FROM customers.customers WHERE id = ${id}) AS exists
-    `);
-    return row.exists;
-  }
-
-  async findAll(): Promise<Customer[]> {
-    const rows = await this.pool.any(sql.type(CustomerRowSchema)`
-      SELECT ${SELECT_COLS} FROM customers.customers ORDER BY created_at DESC
-    `);
-    return rows.map(row => Customer.reconstitute(row));
+    const results = await this.findRowsWhere({ email: email.toLowerCase() } as Partial<CustomerRow>);
+    return results[0] ?? null;
   }
 }

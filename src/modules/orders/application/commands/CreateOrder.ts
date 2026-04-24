@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import type { ICreateOrderUseCase, CreateOrderCommand, CreateOrderResult } from '../ports/commands/ICreateOrderUseCase';
 import type { IEventBus } from '../../../../core/bus/EventBus';
 import type { ICustomerReader } from '../../../../core/interfaces/customers/ICustomerReader';
@@ -64,8 +65,13 @@ export class CreateOrderHandler implements ICreateOrderUseCase {
     const isAvailable = await this.stockChecker.checkAvailability(lineItem.productId, lineItem.quantity);
     if (!isAvailable) throw new InsufficientStockError(lineItem.productId, lineItem.quantity, stockInfo.availableQty);
 
+    // Generate the order ID before calling validateAndApply so the discount
+    // service can use it as an idempotency key (preventing double-application
+    // if the request is retried after the discount is already applied).
+    const orderId = uuidv4();
+
     const discountDTO = cmd.discountCode
-      ? await this.discountApplier.validateAndApply(cmd.discountCode, 'pending')
+      ? await this.discountApplier.validateAndApply(cmd.discountCode, orderId)
       : null;
     const discountPct = discountDTO?.percentage ?? 0;
 
@@ -79,6 +85,7 @@ export class CreateOrderHandler implements ICreateOrderUseCase {
     );
 
     const order = Order.create({
+      id:           orderId,
       customerId:   cmd.customerId,
       items:        [orderItem],
       total:        pricing.total,

@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { sql } from 'slonik';
+import { sql, type FragmentSqlToken } from 'slonik';
+import { type ZodType } from 'zod';
 import type { DatabasePool } from '../../../../core/database/pool';
-import { NotFoundError } from '../../../../core/errors';
+import { BaseRepository } from '../../../../core/repository/BaseRepository';
 import { Order } from '../../domain/Order';
 import { OrderItem } from '../../domain/OrderItem';
 import { Money } from '../../domain/Money';
@@ -13,6 +14,9 @@ import type { OrderRow, OrderItemRow } from '../../domain/order.schema';
 //
 // findByCustomerId batches item fetching — no N+1:
 //   1 query for order rows  +  1 query for ALL their items  =  2 queries total
+//
+// toDomain() is intentionally unreachable — Order requires items to reconstitute
+// so findById and findAll are both overridden and call toOrder() directly.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ORDER_COLS = sql.fragment`
@@ -21,10 +25,20 @@ const ORDER_COLS = sql.fragment`
 const ITEM_COLS = sql.fragment`
   order_id, product_id, product_name, quantity, unit_price
 `;
-const now = () => new Date().toISOString();
 
-export class OrderRepository {
-  constructor(private readonly pool: DatabasePool) {}
+export class OrderRepository extends BaseRepository<OrderRow, Order> {
+  protected readonly schema: ZodType<OrderRow> = OrderRowSchema;
+  protected readonly table = 'orders.orders';
+  protected readonly entityName = 'Order';
+  protected readonly selectCols: FragmentSqlToken = ORDER_COLS;
+
+  constructor(pool: DatabasePool) {
+    super(pool);
+  }
+
+  protected toDomain(_row: OrderRow): Order {
+    throw new Error('OrderRepository.toDomain is unreachable — use findById or findByCustomerId');
+  }
 
   async save(order: Order): Promise<void> {
     await this.pool.transaction(async (tx) => {
@@ -40,7 +54,7 @@ export class OrderRepository {
           ${order.discountCode},
           ${order.discountPct},
           ${order.createdAt.toISOString()},
-          ${now()}
+          ${this.now()}
         )
       `);
 
@@ -64,12 +78,12 @@ export class OrderRepository {
   async update(order: Order): Promise<void> {
     await this.pool.query(sql.unsafe`
       UPDATE orders.orders
-      SET status = ${order.status}, updated_at = ${now()}
+      SET status = ${order.status}, updated_at = ${this.now()}
       WHERE id = ${order.id}
     `);
   }
 
-  async findById(id: string): Promise<Order | null> {
+  override async findById(id: string): Promise<Order | null> {
     const row = await this.pool.maybeOne(sql.type(OrderRowSchema)`
       SELECT ${ORDER_COLS} FROM orders.orders WHERE id = ${id}
     `);
@@ -82,10 +96,10 @@ export class OrderRepository {
     return this.toOrder(row, items);
   }
 
-  async findByIdOrThrow(id: string): Promise<Order> {
-    const order = await this.findById(id);
-    if (!order) throw new NotFoundError('Order', id);
-    return order;
+  // findByIdOrThrow is inherited from BaseRepository — calls our overridden findById above.
+
+  override async findAll(): Promise<Order[]> {
+    throw new Error('OrderRepository.findAll() is not supported — use findByCustomerId()');
   }
 
   async findByCustomerId(customerId: string): Promise<Order[]> {

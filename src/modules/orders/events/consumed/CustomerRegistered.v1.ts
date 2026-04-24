@@ -1,9 +1,9 @@
 // ⚠️  CONSUMED EVENT — READ-ONLY COPY
 // Owner: @customers-team
 //
-// The orders module subscribes to this to pre-cache VIP status.
-// Never modify this file — if the shape changes, customers-team
-// publishes v2 and we update our handler to handle both versions.
+// Reserved for a future OnCustomerRegistered handler in the orders module
+// (e.g. to pre-warm a local customer projection / cache).
+// No handler is wired yet — add one in orders.module.ts when implementing.
 
 export { CustomerRegistered, CustomerRegisteredSchema }
   from '../../../../core/events/payloads/customers';
