@@ -3,18 +3,25 @@ import { parseOrThrow } from '../../../../core/schemas/parseOrThrow';
 import { respond } from '../../../../core/http/respond';
 import { CreateDiscountBodySchema } from './discounts.schemas';
 import type { ICreateDiscountUseCase } from '../../application/ports/commands/ICreateDiscountUseCase';
+import type { IDeactivateDiscountUseCase } from '../../application/ports/commands/IDeactivateDiscountUseCase';
 import type { IGetDiscountUseCase } from '../../application/ports/queries/IGetDiscountUseCase';
 
 export class DiscountsController {
   constructor(
-    private readonly createDiscountUseCase: ICreateDiscountUseCase,
-    private readonly getDiscountUseCase:    IGetDiscountUseCase,
+    private readonly createDiscountUseCase:     ICreateDiscountUseCase,
+    private readonly deactivateDiscountUseCase: IDeactivateDiscountUseCase,
+    private readonly getDiscountUseCase:        IGetDiscountUseCase,
   ) {}
 
   async createDiscount(req: Request, res: Response): Promise<void> {
     const body   = parseOrThrow(CreateDiscountBodySchema, req.body, 'CreateDiscount');
     const result = await this.createDiscountUseCase.execute(body);
     respond.created(res, result);
+  }
+
+  async deactivateDiscount(req: Request, res: Response): Promise<void> {
+    await this.deactivateDiscountUseCase.execute({ code: req.params.code });
+    respond.noContent(res);
   }
 
   async getDiscount(req: Request, res: Response): Promise<void> {

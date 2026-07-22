@@ -10,16 +10,20 @@ export interface StockDecrementResult {
 export class Stock {
   static readonly LOW_STOCK_THRESHOLD = 5;
 
-  private _quantity: number;
+  private _productName: string;
+  private _unitPrice:   number;
+  private _quantity:    number;
 
   private constructor(
-    public readonly id:          string,
-    public readonly productName: string,
-    public readonly unitPrice:   number,
-    quantity:                    number,
-    public readonly createdAt:   Date,
+    public readonly id:        string,
+    productName:               string,
+    unitPrice:                 number,
+    quantity:                  number,
+    public readonly createdAt: Date,
   ) {
-    this._quantity = quantity;
+    this._productName = productName;
+    this._unitPrice   = unitPrice;
+    this._quantity    = quantity;
   }
 
   static create(productName: string, unitPrice: number, initialQty: number): Stock {
@@ -54,7 +58,16 @@ export class Stock {
     this._quantity += qty;
   }
 
-  get quantity(): number          { return this._quantity; }
+  updateDetails(productName: string, unitPrice: number): void {
+    if (!productName || productName.trim() === '') throw new DomainError('Product name cannot be empty');
+    if (unitPrice <= 0) throw new DomainError(`Unit price must be positive. Got: ${unitPrice}`);
+    this._productName = productName.trim();
+    this._unitPrice   = unitPrice;
+  }
+
+  get productName(): string       { return this._productName; }
+  get unitPrice():   number       { return this._unitPrice; }
+  get quantity():    number       { return this._quantity; }
   get isAvailable(): boolean      { return this._quantity > 0; }
   canFulfil(qty: number): boolean { return this._quantity >= qty; }
 }

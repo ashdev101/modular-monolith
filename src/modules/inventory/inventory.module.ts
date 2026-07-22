@@ -10,6 +10,8 @@ import { InventoryController } from './infrastructure/http/inventory.controller'
 import { OnOrderCreated } from './events/handlers/OnOrderCreated';
 import { OnOrderCancelled } from './events/handlers/OnOrderCancelled';
 import { AddProductHandler } from './application/commands/AddProduct';
+import { UpdateStockHandler } from './application/commands/UpdateStock';
+import { DeleteProductHandler } from './application/commands/DeleteProduct';
 import { GetStockHandler } from './application/queries/GetStock';
 import { ListProductsHandler } from './application/queries/ListProducts';
 
@@ -30,11 +32,13 @@ export class InventoryModule {
     this.stockReader   = acl;
     this.stockChecker  = acl;
 
-    const addProduct   = new AddProductHandler(this.repo);
-    const getStock     = new GetStockHandler(this.repo);
-    const listProducts = new ListProductsHandler(this.repo);
+    const addProduct    = new AddProductHandler(this.repo);
+    const updateStock   = new UpdateStockHandler(this.repo);
+    const deleteProduct = new DeleteProductHandler(this.repo);
+    const getStock      = new GetStockHandler(this.repo);
+    const listProducts  = new ListProductsHandler(this.repo);
 
-    this.controller = new InventoryController(addProduct, getStock, listProducts);
+    this.controller = new InventoryController(addProduct, updateStock, deleteProduct, getStock, listProducts);
 
     // Event subscriptions wired at construction time — not in register() —
     // so handlers are active as soon as the module exists, regardless of
@@ -44,9 +48,11 @@ export class InventoryModule {
   }
 
   register(app: Application): void {
-    app.post('/inventory',    this.controller.addProduct.bind(this.controller));
-    app.get('/inventory',     this.controller.listProducts.bind(this.controller));
-    app.get('/inventory/:id', this.controller.getStock.bind(this.controller));
+    app.post('/inventory',       this.controller.addProduct.bind(this.controller));
+    app.get('/inventory',        this.controller.listProducts.bind(this.controller));
+    app.get('/inventory/:id',    this.controller.getStock.bind(this.controller));
+    app.patch('/inventory/:id',  this.controller.updateStock.bind(this.controller));
+    app.delete('/inventory/:id', this.controller.deleteProduct.bind(this.controller));
 
     console.log('[InventoryModule] ✅ Routes + event subscriptions registered');
   }

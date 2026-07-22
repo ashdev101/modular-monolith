@@ -38,7 +38,10 @@ export class StockRepository extends BaseRepository<StockRow, Stock> {
   async update(stock: Stock): Promise<void> {
     await this.pool.query(sql.unsafe`
       UPDATE inventory.products
-      SET quantity = ${stock.quantity}, updated_at = ${this.now()}
+      SET product_name = ${stock.productName},
+          unit_price   = ${stock.unitPrice},
+          quantity     = ${stock.quantity},
+          updated_at   = ${this.now()}
       WHERE id = ${stock.id}
     `);
   }

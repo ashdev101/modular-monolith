@@ -3,18 +3,20 @@ import { DomainError, InvalidDiscountError } from '../../../core/errors';
 import type { DiscountRow } from './discount.schema';
 
 export class DiscountCode {
-  private _usageCount: number;
+  private _isActive:    boolean;
+  private _usageCount:  number;
 
   private constructor(
     public readonly id:         string,
     public readonly code:       string,
     public readonly percentage: number,
-    public readonly isActive:   boolean,
+    isActive:                   boolean,
     public readonly expiresAt:  Date | null,
     public readonly maxUsage:   number | null,
     usageCount:                 number,
     public readonly createdAt:  Date,
   ) {
+    this._isActive   = isActive;
     this._usageCount = usageCount;
   }
 
@@ -41,8 +43,13 @@ export class DiscountCode {
     );
   }
 
+  deactivate(): void {
+    if (!this._isActive) throw new DomainError(`Discount code '${this.code}' is already inactive`);
+    this._isActive = false;
+  }
+
   assertValid(): void {
-    if (!this.isActive) throw new InvalidDiscountError(this.code, 'code is inactive');
+    if (!this._isActive) throw new InvalidDiscountError(this.code, 'code is inactive');
     if (this.expiresAt && this.expiresAt < new Date()) {
       throw new InvalidDiscountError(this.code, `expired at ${this.expiresAt.toISOString()}`);
     }
@@ -56,7 +63,8 @@ export class DiscountCode {
     this._usageCount += 1;
   }
 
-  get usageCount(): number { return this._usageCount; }
+  get isActive():   boolean { return this._isActive; }
+  get usageCount(): number  { return this._usageCount; }
 
   get isDepletedAfterApply(): boolean {
     return this.maxUsage !== null && this._usageCount >= this.maxUsage;

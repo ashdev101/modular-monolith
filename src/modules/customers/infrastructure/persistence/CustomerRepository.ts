@@ -40,7 +40,9 @@ export class CustomerRepository extends BaseRepository<CustomerRow, Customer> {
   async update(customer: Customer): Promise<void> {
     await this.pool.query(sql.unsafe`
       UPDATE customers.customers
-      SET is_vip         = ${customer.isVip},
+      SET name           = ${customer.name},
+          email          = ${customer.email},
+          is_vip         = ${customer.isVip},
           vip_granted_at = ${customer.vipGrantedAt?.toISOString() ?? null},
           updated_at     = ${this.now()}
       WHERE id = ${customer.id}

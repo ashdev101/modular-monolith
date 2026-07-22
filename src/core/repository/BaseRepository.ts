@@ -66,6 +66,12 @@ export abstract class BaseRepository<TRow extends { id: string }, TDomain = TRow
     return row.exists;
   }
 
+  async delete(id: string): Promise<void> {
+    await this.pool.query(sql.unsafe`
+      DELETE FROM ${this.identifier} WHERE id = ${id}
+    `);
+  }
+
   // Keys are constrained to actual TRow properties — no arbitrary string keys.
   // Date values are serialised to ISO strings before interpolation.
   // Always call via a typed wrapper method in the subclass, never expose publicly.

@@ -6,6 +6,7 @@ import { DiscountRepository } from './infrastructure/persistence/DiscountReposit
 import { LocalDiscountService } from './infrastructure/acl/LocalDiscountService';
 import { DiscountsController } from './infrastructure/http/discounts.controller';
 import { CreateDiscountHandler } from './application/commands/CreateDiscount';
+import { DeactivateDiscountHandler } from './application/commands/DeactivateDiscount';
 import { GetDiscountHandler } from './application/queries/GetDiscount';
 
 export class DiscountsModule {
@@ -25,15 +26,17 @@ export class DiscountsModule {
     this.discountReader    = acl;
     this.discountApplier   = acl;
 
-    const createDiscount = new CreateDiscountHandler(this.repo);
-    const getDiscount    = new GetDiscountHandler(this.repo);
+    const createDiscount     = new CreateDiscountHandler(this.repo);
+    const deactivateDiscount = new DeactivateDiscountHandler(this.repo);
+    const getDiscount        = new GetDiscountHandler(this.repo);
 
-    this.controller = new DiscountsController(createDiscount, getDiscount);
+    this.controller = new DiscountsController(createDiscount, deactivateDiscount, getDiscount);
   }
 
   register(app: Application): void {
-    app.post('/discounts',      this.controller.createDiscount.bind(this.controller));
-    app.get('/discounts/:code', this.controller.getDiscount.bind(this.controller));
+    app.post('/discounts',          this.controller.createDiscount.bind(this.controller));
+    app.get('/discounts/:code',     this.controller.getDiscount.bind(this.controller));
+    app.delete('/discounts/:code',  this.controller.deactivateDiscount.bind(this.controller));
     console.log('[DiscountsModule] ✅ Routes registered');
   }
 }

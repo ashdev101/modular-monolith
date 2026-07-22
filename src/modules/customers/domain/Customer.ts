@@ -3,17 +3,21 @@ import { DomainError, ValidationError } from '../../../core/errors';
 import type { CustomerRow } from './customer.schema';
 
 export class Customer {
-  private _isVip: boolean;
+  private _name:        string;
+  private _email:       string;
+  private _isVip:       boolean;
   private _vipGrantedAt: Date | null;
 
   private constructor(
     public readonly id:        string,
-    public readonly name:      string,
-    public readonly email:     string,
+    name:                      string,
+    email:                     string,
     isVip:                     boolean,
     public readonly createdAt: Date,
     vipGrantedAt:              Date | null,
   ) {
+    this._name = name;
+    this._email = email;
     this._isVip = isVip;
     this._vipGrantedAt = vipGrantedAt;
   }
@@ -48,6 +52,14 @@ export class Customer {
     this._vipGrantedAt = null;
   }
 
-  get isVip(): boolean            { return this._isVip; }
-  get vipGrantedAt(): Date | null { return this._vipGrantedAt; }
+  updateProfile(name: string, email: string): void {
+    if (!name || name.trim().length < 2) throw new ValidationError('Customer name must be at least 2 characters');
+    this._name  = name.trim();
+    this._email = email.toLowerCase().trim();
+  }
+
+  get name():         string       { return this._name; }
+  get email():        string       { return this._email; }
+  get isVip():        boolean      { return this._isVip; }
+  get vipGrantedAt(): Date | null  { return this._vipGrantedAt; }
 }
